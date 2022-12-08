@@ -25,3 +25,7 @@ Some groundwork for additional frames already exists.
 
 * CRC check
 * Additional supported frames
+
+
+## Speicherort
+~/.config/Logic/Marketplace/92

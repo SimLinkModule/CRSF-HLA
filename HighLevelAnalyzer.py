@@ -19,6 +19,9 @@ class Hla(HighLevelAnalyzer):
         },
         'crsf_payload': {
             'format': 'Payload: {{data.payload}}'
+        },
+        'crsf_address_byte': {
+            'format': 'Address: {{data.address}}'
         }
     }
 
@@ -62,6 +65,7 @@ class Hla(HighLevelAnalyzer):
         self.crsf_frame_length = 0  # No. of bytes (type + payload)
         self.crsf_frame_type = None  # Type of current frame (see frame_types)
         self.crsf_frame_current_index = 0  # Index to determine end of payload
+        self.crsf_address = 0 #Zieladresse
         self.crsf_payload = []  # Stores the payload for decoding after last byte ist rx'd.
         self.crsf_payload_start = None  # Timestamp: Start of payload (w/o frame type)
         self.crsf_payload_end = None  # Timestamp: End of payload
@@ -84,11 +88,20 @@ class Hla(HighLevelAnalyzer):
         '''
 
         # New frame
-        if self.crsf_frame_start == None and frame.data['data'] == self.CRSF_SYNC_BYTE and self.dec_fsm == self.dec_fsm_e.Idle:
-            print('Sync byte detected.')
+        #if self.crsf_frame_start == None and frame.data['data'] == self.CRSF_SYNC_BYTE and self.dec_fsm == self.dec_fsm_e.Idle:
+        #    print('Sync byte detected.')
+        #    print('SYNC BYTE: {}'.format(frame.data['data']));
+        #    self.crsf_frame_start = frame.start_time
+        #    self.dec_fsm = self.dec_fsm_e.Length
+        #    return AnalyzerFrame('crsf_sync_byte', frame.start_time, frame.end_time, {})
+        if self.crsf_frame_start == None and self.dec_fsm == self.dec_fsm_e.Idle:
+            print('Device-Address: {}'.format(frame.data['data']))
             self.crsf_frame_start = frame.start_time
             self.dec_fsm = self.dec_fsm_e.Length
-            return AnalyzerFrame('crsf_sync_byte', frame.start_time, frame.end_time, {})
+            self.crsf_address = frame.data['data']
+            return AnalyzerFrame('crsf_address_byte', frame.start_time, frame.end_time, {
+                'address': frame.data['data']
+            })
 
         # Length
         if self.dec_fsm == self.dec_fsm_e.Length:
@@ -103,6 +116,7 @@ class Hla(HighLevelAnalyzer):
         # Type
         if self.dec_fsm == self.dec_fsm_e.Type:
             payload = int.from_bytes(frame.data['data'], byteorder='little')
+            print("Type PAYLOAD: {}".format(payload));
             print('Type: {}'.format(self.frame_types[payload]))
             self.crsf_frame_type = payload
             self.dec_fsm = self.dec_fsm_e.Payload
@@ -130,7 +144,7 @@ class Hla(HighLevelAnalyzer):
                 analyzerframe = None
                 self.crsf_payload_end = frame.end_time
                 self.crsf_payload.append(payload)
-                #print('Payload complete ({}): {:2x}'.format(self.crsf_frame_current_index, payload))
+                print('Payload complete ({}): {:2x}'.format(self.crsf_frame_current_index, payload))
                 #print(self.crsf_payload)
 
                 # Let's decode the payload
